@@ -88,6 +88,9 @@ INSERT INTO IDM_MGMT_MAP.AVIS_UU_MAP_CONTRACT (
             1
         FROM IDM_MGMT_MAP.AVIS_UU_MAP_CONTRACT AM
         WHERE AM."Корневой договор номер" = AMG."Корневой договор номер ")
+    ORDER BY AG_OUR_NUMBER
+    ORDER BY OP_DATE
+    ORDER BY ENTRY_ID
     LIMIT 1
 ;
 
