@@ -1,88 +1,7 @@
---// Формируем таблицу на основе таблицы STG_FILES."092_Эталон ЮНИКУС_ИТОГ"//--
-CREATE OR REPLACE TABLE IDM_MGMT_MAP.UNC_UU_MAP_ETALON (
-    "Корневой Договор Номер" VARCHAR(64),
-    "Корневой Полис ID" DECIMAL(36,10),
-    "АВС 2011 мэп" VARCHAR(8),
-    "ЦФО 2012 мэп" VARCHAR(8),
-    "КП 2011 мэп" VARCHAR(8),
-    "Код ПП" VARCHAR(16),
-    "Продукт OEBS" CHAR(7),
-    "Год договора OEBS" CHAR(7),
-    "Эталон" CHAR(1)
-);
+WITH NO_ETALON AS (
 
---// Добавляем данные в таблицу UNC_UU_MAP_ETALON//--
---INSERT INTO IDM_MGMT_MAP.UNC_UU_MAP_ETALON (
---    "Корневой Договор Номер",
---    "Корневой Полис ID",
---    "АВС 2011 мэп",
---    "ЦФО 2012 мэп",
---    "КП 2011 мэп",
---    "Код ПП",
---    "Продукт OEBS",
---    "Год договора OEBS",
---    "Эталон"
---    )
---    SELECT
---        CONTRACT_NUMBER_005,
---        POLICY_UNIQUE_ID_036 ,
---        "АВС 2011 мэп",
---        "ЦФО 2012 мэп",
---        "КП 2011 мэп",
---        "Код ПП",
---        "Продукт OEBS",
---        "Год договора OEBS",
---        '1' "Эталон"
---    FROM STG_FILES."092_Эталон ЮНИКУС_ИТОГ"
---;
+    WITH "UNICUS Страхователь" AS (
 
-
---// Формируем таблицу эквивалент "Доп Мэппинг 2011"//--
-CREATE OR REPLACE TABLE IDM_MGMT_MAP.UNC_UU_MAP_ADDON (
-    "Корневой Договор Номер" VARCHAR(64),
-    "Корневой Полис ID" DECIMAL(36,10),
-    "ЦФО" VARCHAR(8),
-    "АВС" VARCHAR(8),
-    "КП" VARCHAR(8),
-    "Код ПП" VARCHAR(16),
-    "Продукт OEBS" CHAR(7),
-    "Год договора OEBS" CHAR(7),
-    "Эталон" CHAR(1)
-);
-
---// Формируем таблицу эквивалент "Итого Мэппинг 2011" //--
-CREATE OR REPLACE TABLE IDM_MGMT_MAP.UNC_UU_MAP_POLICY (
-    "Корневой Полис ID" DECIMAL(36,10),
-    "АВС" VARCHAR(8),
-    "ЦФО" VARCHAR(8),
-    "КП" VARCHAR(8),
-    "Продукт OEBS" CHAR(7),
-    "Эталон" CHAR(1)
-);
-
---// Формируем таблицу эквивалент "Итого Мэппинг" //--
-CREATE OR REPLACE TABLE IDM_MGMT_MAP.UNC_UU_MAP_CONTRACT (
-    "Корневой Договор Номер" VARCHAR(64),
-    "АВС" VARCHAR(8),
-    "ЦФО" VARCHAR(8),
-    "КП" VARCHAR(8),
-    "Уникальный" VARCHAR(2)
-);
-
---// Добавляем данные в таблицу UNC_UU_MAP_ADDON//--
-INSERT INTO IDM_MGMT_MAP.UNC_UU_MAP_ADDON (
-    "Корневой Договор Номер",
-    "Корневой Полис ID",
-    "ЦФО",
-    "Код ПП",
-    "АВС",
-    "КП",
-    "Продукт OEBS",
-    "Год договора OEBS",
-    "Эталон"
-    )
-
-		WITH "UNICUS Страхователь" AS (
         SELECT
             SUBJECT_ID,
             INN
@@ -97,35 +16,64 @@ INSERT INTO IDM_MGMT_MAP.UNC_UU_MAP_ADDON (
         WHERE NOT EXISTS(SELECT 1 FROM STG_UNC.JURIDICAL_PERSON JP WHERE JP.SUBJECT_ID = PP.SUBJECT_ID)
     )
 
+    SELECT
+        ARC.ENTRY_ID,
+    	ARC.CONTRACT_NUMBER_005,
+    	ARC.DEPARTMENT_CODE_009,
+    	ARC.POLICY_ID_100,
+    	US.INN "Страхователь ИНН",
+    	CON.MANAGER_NAME,
+    	PRF."Продукт OEBS 2023" "Код OEBS АВС 2011",
+    	'0' "Эталон"
+    FROM STG_UNC.XX_ALFA_RZ_CONTRACT ARC
+
+    LEFT JOIN "UNICUS Страхователь" US
+        ON ARC.INSURER_SUBJECT_ID_070 = US.SUBJECT_ID
+
+    LEFT JOIN (
+        SELECT
+            CON.CONTRACT_ID ROOT_CONTRACT_ID_002,
+            CON.MANAGER_SUBJECT_ID
+            SUBJECT_NAME MANAGER_NAME
+        FROM STG_UNC.CONTRACT CON
+        LEFT JOIN (
+	        SELECT DISTINCT
+		    		SUBJECT_NAME,
+		    		SUBJECT_ID
+		    FROM STG_UNC.SUBJECT
+		    ) SUB
+		    ON SUB.SUBJECT_ID = CON.MANAGER_SUBJECT_ID
+        ) CON
+            ON CON.ROOT_CONTRACT_ID_002 = ARC.ROOT_CONTRACT_ID_002
+
+--    LEFT JOIN STG_UNC.CONTRACT CON
+--		ON CON.CONTRACT_ID = ARC.ROOT_CONTRACT_ID_002
+--
+--	LEFT JOIN (
+--	    SELECT DISTINCT
+--				SUBJECT_NAME,
+--				SUBJECT_ID
+--		FROM STG_UNC.SUBJECT
+--		) SUB
+--		ON SUB.SUBJECT_ID = CON.MANAGER_SUBJECT_ID
+
+    LEFT JOIN STG_FILES."092_Эталон ЮНИКУС_ИТОГ" PRF
+        ON PRF.POLICY_UNIQUE_ID_036 = ARC.POLICY_UNIQUE_ID_036 AND PRF.POLICY_UNIQUE_ID_036 IS NOT NULL
+
+    WHERE ARC.PREMIUM_CHARGE_DATE_051 BETWEEN '2024-01-01 01:00:00.0' AND '2024-01-05 01:00:00.0' AND
+        "Код OEBS АВС 2011" IS NULL
+);
+
+CREATE OR REPLACE TABLE IDM_MGMT_MAP.UNC_UU_MAP_ADDON AS (
+
+
     WITH FOR_REFERENCE AS (
     	SELECT
-    		RZ.POLICY_UNIQUE_ID_036,
-    		RZ.ENTRY_ID,
-    		RZ.POLICY_ID_100,
-			RZ.DEPARTMENT_CODE_009,
-			RZ.INSURANCE_OBJECT_TYPE_NAME_040,
-			RZ.CHANNEL_SALE_014,
-			RZ.CONTRACT_NUMBER_005,
-			RZ.CONTRACT_TYPE_118,
-			RZ.CONTRACT_TYPE_092,
-			RZ.PRODUCT_CODE_034,
-			RZ.INSURER_SUBJECT_TYPE_072,
-			RZ.AGENT_012,
-			RZ.CONTRACT_BEGIN_DATE_021,
-			RZ.CONTRACT_END_DATE_022,
-			SUB.SUBJECT_NAME MANAGER_NAME,
-			US.INN "Страхователь ИНН"
-    	FROM STG_UNC.XX_ALFA_RZ_CONTRACT RZ
-		LEFT JOIN STG_FILES."092_Эталон ЮНИКУС_ИТОГ" ET
-			ON RZ.POLICY_UNIQUE_ID_036 = ET.POLICY_UNIQUE_ID_036
-		LEFT JOIN STG_UNC.CONTRACT CON
-        	ON CON.CONTRACT_ID = RZ.ROOT_CONTRACT_ID_002
-		LEFT JOIN STG_UNC.SUBJECT SUB
-        	ON SUB.SUBJECT_ID = CON.MANAGER_SUBJECT_ID
-		LEFT JOIN "UNICUS Страхователь" US
-        	ON RZ.INSURER_SUBJECT_ID_070 = US.SUBJECT_ID
-    	WHERE RZ.PREMIUM_CHARGE_DATE_051 BETWEEN '2024-01-01 01:00:00.0' AND '2024-01-05 01:00:00.0' AND
-            ET."АВС 2011 мэп" IS NULL
+    		POLICY_UNIQUE_ID_036,
+    		ENTRY_ID,
+    		POLICY_ID_100
+    	FROM IDM_MNGL_MAPPING."UNICUS Для Эталона"
+    	WHERE "Код OEBS АВС 2011" IS NULL
     )
 
     , LAST_POLIS AS (
@@ -152,100 +100,170 @@ INSERT INTO IDM_MGMT_MAP.UNC_UU_MAP_ADDON (
     )
 
     , PRODUCT_ATTRIBUTES AS (
-        SELECT DISTINCT
-            IO.CONTRACT_CONDITION_ID "Договор Условие ID",
-            IO.INSURANCE_OBJECT_ID "Объект страхования ID",
-            CON.CONTRACT_VARIANT_ID "Договор Вариант ID",
-            AP_1.PRODUCT_ADD_VALUE "Атр ПРД Банк/Лизинг",
-            AP_2.PRODUCT_ADD_VALUE "Атр ПРД Наименование дисконтной программы",
-            AP_3.PRODUCT_ADD_VALUE "Атр ПРД Маркетинговое наименование продукта",
-            NULL "Атр ПРД Специальное условие"
-        FROM STG_UNC.INSURANCE_OBJECT IO
+       	SELECT DISTINCT
+           	IO.CONTRACT_CONDITION_ID "Договор Условие ID",
+           	IO.INSURANCE_OBJECT_ID POLICY_ID_100,
+           	CON.CONTRACT_VARIANT_ID "Договор Вариант ID",
+           	AP_1.PRODUCT_ADD_VALUE "Атр ПРД Банк/Лизинг",
+           	AP_2.PRODUCT_ADD_VALUE "Атр ПРД Наименование дисконтной программы",
+           	AP_3.PRODUCT_ADD_VALUE "Атр ПРД Маркетинговое наименование продукта",
+          	 	NULL "Атр ПРД Специальное условие"
+       	FROM STG_UNC.INSURANCE_OBJECT IO
 
-        LEFT JOIN STG_UNC.CONTRACT_CONDITION CON
+       	LEFT JOIN STG_UNC.CONTRACT_CONDITION CON
            	ON IO.CONTRACT_CONDITION_ID = CON.CONTRACT_CONDITION_ID
 
-        LEFT JOIN T2_COMMON."UNICUS Атрибуты Продуктов" AP_1
+       	LEFT JOIN T2_COMMON."UNICUS Атрибуты Продуктов" AP_1
            	ON IO.CONTRACT_CONDITION_ID = AP_1.CONTRACT_VARIANT_ID AND AP_1.PRODUCT_ADD_NAME = 'БанкЛизинг'
 
-        LEFT JOIN T2_COMMON."UNICUS Атрибуты Продуктов" AP_2
+    	LEFT JOIN T2_COMMON."UNICUS Атрибуты Продуктов" AP_2
            	ON IO.CONTRACT_CONDITION_ID = AP_2.CONTRACT_VARIANT_ID AND AP_2.PRODUCT_ADD_NAME = 'Наименование дисконтной программы'
 
-        LEFT JOIN T2_COMMON."UNICUS Атрибуты Продуктов" AP_3
+    	LEFT JOIN T2_COMMON."UNICUS Атрибуты Продуктов" AP_3
            	ON IO.CONTRACT_CONDITION_ID = AP_3.CONTRACT_VARIANT_ID AND AP_3.PRODUCT_ADD_NAME = 'Маркетинговое наименование продукта'
 
-        --//LEFT JOIN T2_COMMON."UNICUS Атрибуты Продуктов" AP_4
+    	--//LEFT JOIN T2_COMMON."UNICUS Атрибуты Продуктов" AP_4
            --//	ON IO.CONTRACT_CONDITION_ID = AP.CONTRACT_VARIANT_ID AND AP.PRODUCT_ADD_NAME = 'Специальное условие'
-
-        WHERE EXISTS(SELECT 1 FROM FOR_REFERENCE)
        )
 
-       , UTK AS (
-            SELECT
-                LP.POLICY_UNIQUE_ID_036,
-                FP.ENTRY_ID,
-                FP.DEPARTMENT_CODE_009,
-				FP.CONTRACT_NUMBER_005,
-				FP.MANAGER_NAME,
-				FP.CONTRACT_TYPE_118,
-				FP.PRODUCT_CODE_034,
-				FP.CONTRACT_TYPE_092,
-				FP.INSURER_SUBJECT_TYPE_072,
-				FP.INSURANCE_OBJECT_TYPE_NAME_040,
-				FP.AGENT_012,
-				FP.CONTRACT_BEGIN_DATE_021,
-				FP.CONTRACT_END_DATE_022,
-				FP."Страхователь ИНН",
-                CFO."Код OEBS ЦФО 2011" "ЦФО 2012 Мэп",
-                ABC."Код OEBS АВС 2011" "АВС 2011 Мэп",
-                KP."Код OEBS КП 2011" "КП 2011 Мэп",
-                PA."Атр ПРД Банк/Лизинг",
-                PA."Атр ПРД Наименование дисконтной программы",
-                PA."Атр ПРД Маркетинговое наименование продукта",
-                PA."Атр ПРД Специальное условие"
-            FROM LAST_POLIS LP
+       , UTK AS (SELECT
+    	LP.POLICY_UNIQUE_ID_036,
+    	CONCAT(LP.POLICY_UNIQUE_ID_036,
+    			'@',
+    			LP.ENTRY_ID) "Ключ",
+           FP.ENTRY_ID,
+    	FP.CONTRACT_NUMBER_005,
+    	FP.CONTRACT_NUMBER_098,
+    	FP.DEPARTMENT_NAME_010,
+    	FP.AGENT_012,
+    	FP.CHANNEL_SALE_014,
+    	FP.RED_CARD_SUBJECT_ID_032,
+    	FP.RED_CARD_SUBJECT_NAME_033,
+    	FP.INSURANCE_OBJECT_TYPE_ID_039,
+    	FP.INSURANCE_OBJECT_TYPE_NAME_040,
+    	FP.PREMIUM_CHARGE_DATE_051,
+    	FP.ROOT_CONTRACT_ID_002,
+    	FP.INSURER_SUBJECT_ID_070,
+    	FP.INSURER_SUBJECT_NAME_071,
+    	FP.INSURER_SUBJECT_TYPE_072,
+    	FP.CONFIRM_DATE_086,
+    	FP.CONTRACT_TYPE_092,
+    	FP.ROW_TYPE_112,
+    	FP.CONTRACT_TYPE_118,
+    	FP.INSURANCE_PREMIUM_RUB_120,
+    	FP.CLAIM_122,
+    	FP.COMPANY_126,
+    	FP.POLICY_ID_100,
+    	FP.LIABILITY_BEGIN_DATE_102,
+    	FP.CONTRACT_BEGIN_DATE_021,
+    	FP.CONTRACT_END_DATE_022,
+    	FP.PRODUCT_CODE_034,
+    	FP."Страхователь ИНН",
+    	FP.MANAGER_SUBJECT_ID,
+    	FP.MANAGER_NAME,
+    	FP."Код OEBS АВС 2011",
+    	FP.DEPARTMENT_CODE_009 DEPARTMENT_CODE,
+    	FP.POLICY_UNIQUE_ID_036 POLICY_UNIQUE_ID_036_FP,
+        CFO."Код OEBS ЦФО 2011" "ЦФО 2012 Мэп",
+        ABC."Номер строчки",
+        ABC."Код OEBS АВС 2011" "АВС 2011 Мэп",
+        KP."Код OEBS КП 2011" "КП 2011 Мэп",
+        PA."Атр ПРД Банк/Лизинг",
+        PA."Атр ПРД Наименование дисконтной программы",
+        PA."Атр ПРД Маркетинговое наименование продукта",
+        PA."Атр ПРД Специальное условие",
+    	'0' "Эталон"
 
-            LEFT JOIN FOR_REFERENCE FP
-                ON FP.POLICY_UNIQUE_ID_036 = LP.POLICY_UNIQUE_ID_036 AND FP.ENTRY_ID = LP.ENTRY_ID
+       FROM LAST_POLIS LP
 
-            LEFT JOIN STG_FILES."017_справ_кодов_ЦФО" CFO
-                ON CFO."код_подразделения" = FP.DEPARTMENT_CODE_009 AND CFO."код_подразделения" IS NOT NULL
+       LEFT JOIN IDM_MNGL_MAPPING."UNICUS Для Эталона" FP
+           ON FP.POLICY_UNIQUE_ID_036 = LP.POLICY_UNIQUE_ID_036 AND
+               FP.(POLICY_UNIQUE_ID_036, '@', ENTRY_ID) = CONCAT(LP.POLICY_UNIQUE_ID_036, '@', LP.ENTRY_ID) AND
+               "Код OEBS АВС 2011" IS NULL
 
-            LEFT JOIN STG_FILES."014_справ_кодов_АВС" ABC
-                ON ABC."Тос название Юникус" = FP.INSURANCE_OBJECT_TYPE_NAME_040 AND ABC."Тос название Юникус" IS NOT NULL
+       LEFT JOIN STG_FILES."017_справ_кодов_ЦФО" CFO
+           ON CFO."код_подразделения" = FP.DEPARTMENT_CODE_009 AND CFO."код_подразделения" IS NOT NULL
 
-            LEFT JOIN STG_FILES."015_справ_кодов_КП" KP
-                ON KP."КП название Юникус" = FP.CHANNEL_SALE_014 AND KP."КП название Юникус" IS NOT NULL
+       LEFT JOIN STG_FILES."014_справ_кодов_АВС" ABC
+           ON ABC."Тос название Юникус" = FP.INSURANCE_OBJECT_TYPE_NAME_040 AND ABC."Тос название Юникус" IS NOT NULL
 
-            LEFT JOIN PRODUCT_ATTRIBUTES PA
-                ON PA."Объект страхования ID" = FP.POLICY_ID_100
+       LEFT JOIN STG_FILES."015_справ_кодов_КП" KP
+           ON KP."КП название Юникус" = FP.CHANNEL_SALE_014 AND KP."КП название Юникус" IS NOT NULL
+
+       LEFT JOIN PRODUCT_ATTRIBUTES PA
+           ON PA.POLICY_ID_100 = FP.POLICY_ID_100
        )
 
     SELECT
+--		    UTK.POLICY_UNIQUE_ID_036,
+--            UTK."Ключ",
+--            UTK.ENTRY_ID,
+--            UTK.CONTRACT_NUMBER_005,
+--            UTK.CONTRACT_NUMBER_098,
+--            UTK.DEPARTMENT_NAME_010,
+--            UTK.AGENT_012,
+--            UTK.CHANNEL_SALE_014,
+--            UTK.RED_CARD_SUBJECT_ID_032,
+--            UTK.RED_CARD_SUBJECT_NAME_033,
+--            UTK.INSURANCE_OBJECT_TYPE_ID_039,
+--            UTK.INSURANCE_OBJECT_TYPE_NAME_040,
+--            UTK.PREMIUM_CHARGE_DATE_051,
+--            UTK.ROOT_CONTRACT_ID_002,
+--            UTK.INSURER_SUBJECT_ID_070,
+--            UTK.INSURER_SUBJECT_NAME_071,
+--            UTK.INSURER_SUBJECT_TYPE_072,
+--            UTK.CONFIRM_DATE_086,
+--            UTK.CONTRACT_TYPE_092,
+--            UTK.ROW_TYPE_112,
+--            UTK.CONTRACT_TYPE_118,
+--            UTK.INSURANCE_PREMIUM_RUB_120,
+--            UTK.CLAIM_122,
+--            UTK.COMPANY_126,
+--            UTK.POLICY_ID_100,
+--            UTK.LIABILITY_BEGIN_DATE_102,
+--            UTK.CONTRACT_BEGIN_DATE_021,
+--            UTK.CONTRACT_END_DATE_022,
+--            UTK.PRODUCT_CODE_034,
+--            UTK."Страхователь ИНН",
+--            UTK.MANAGER_SUBJECT_ID,
+--            UTK.MANAGER_NAME,
+--            UTK."Код OEBS АВС 2011",
+--            UTK.DEPARTMENT_CODE,
+--            UTK.POLICY_UNIQUE_ID_036_FP,
+--		    UTK."ЦФО 2012 Мэп",
+--		    UTK."Номер строчки",
+--		    UTK."АВС 2011 Мэп",
+--		    UTK."Атр ПРД Банк/Лизинг",
+--		    UTK."Атр ПРД Наименование дисконтной программы",
+--		    UTK."Атр ПРД Маркетинговое наименование продукта",
+--		    UTK."Атр ПРД Специальное условие",
+
             UTK.CONTRACT_NUMBER_005 "Номер Корневого Договора",
 		    UTK.POLICY_UNIQUE_ID_036,
 		    UTK."ЦФО 2012 Мэп" "ЦФО",
-		    UTK.DEPARTMENT_CODE_009 "Код ПП",
-
+		    UTK."АВС 2011 Мэп" "АВС",
+		    UTK."КП 2011 Мэп" "КП",
+		    UTK.DEPARTMENT_CODE "Код ПП",
             --Каско Go на АВС е-гарант
             CASE
-                WHEN "Атр ПРД Маркетинговое наименование продукта" = 'КАСКОGO' THEN 'B104'
-				ELSE UTK."АВС 2011 Мэп"
-            END "АВС",
+                WHEN 'Атр ПРД Маркетинговое наименование продукта' = 'КАСКОGO' THEN 'B104'
+		    	ELSE "АВС 2011 Мэп"
+            END "АВС 2011 Мэп new",
 
 		    --Корр-ка канала, выделение агрегаторов и перенос на е-гарант
 		    CASE
                 WHEN "КП 2011 Мэп" = 'K402' AND (
                     ("АВС 2011 Мэп" = 'B103' AND MANAGER_NAME <> 'Горин Александр Эдуардович') OR
                     ("АВС 2011 Мэп" = 'B104' AND MANAGER_NAME <> 'Горин Александр Эдуардович') OR
-                    ("Атр ПРД Маркетинговое наименование продукта" = 'КАСКОGO')
+                    ("Атр.ПРД Маркетинговое наименование продукта" = 'КАСКОGO')
                 ) THEN 'K401'
                 WHEN "КП 2011 Мэп" = 'B104' AND
                     (CONTRACT_TYPE_118 = '3' OR
                     ("КП 2011 Мэп" = 'K402' AND
                     MANAGER_NAME = 'Горин Александр Эдуардович')
                 ) THEN 'K305'
-            END "КП",
+                ELSE "КП 2011 Мэп"
+            END "КП 2011 Мэп new",
 
 		    --//Определение продукта OEBS
 		    CASE
@@ -445,10 +463,17 @@ INSERT INTO IDM_MGMT_MAP.UNC_UU_MAP_ADDON (
                     CASE
                         WHEN PRODUCT_CODE_034 IN ('333', '350', '845', '847', '869', '948') THEN 'B208001'
                         WHEN CONTRACT_TYPE_118 = 3 THEN 'B208003'
-                      	WHEN PRODUCT_CODE_034 = '879' THEN 'B208004'
-                      	WHEN PRODUCT_CODE_034 = '888' AND ("КП 2011 Мэп" = 'K201' OR "КП 2011 Мэп" = 'K306') THEN 'B208005'
-                        WHEN PRODUCT_CODE_034 = '952' THEN 'B208006'
-						ELSE 'B208002'
+                        WHEN
+                            CASE
+                                PRODUCT_CODE_034
+                                WHEN '879' THEN 'B208004'
+                                WHEN '888' AND ("КП 2011 Мэп" = 'K201' OR "КП 2011 Мэп" = 'K306') THEN 'B208005'
+                                WHEN '952' THEN 'B208006'
+                            END
+--                        WHEN PRODUCT_CODE_034 = '879' THEN
+--                        WHEN PRODUCT_CODE_034 = '888' AND ("КП 2011 Мэп" = 'K201' OR "КП 2011 Мэп" = 'K306') THEN 'B208005'
+--                        WHEN PRODUCT_CODE_034 = '952' THEN 'B208006'
+                        ELSE 'B208002'
                     END
                     )
 
@@ -643,105 +668,91 @@ INSERT INTO IDM_MGMT_MAP.UNC_UU_MAP_ADDON (
 		    END "Продукт OEBS",
 		    '2' "Год договора OEBS",
 		    '0' "Эталон"
-    FROM UTK
-;
+    FROM IDM_MNGL_MAPPING."UNICUS Итого Ключ" UTK
+);
 
-INSERT INTO IDM_MGMT_MAP.UNC_UU_MAP_POLICY (
-    "Корневой Полис ID",
-    "АВС",
-    "ЦФО",
-    "КП",
-    "Продукт OEBS",
-    "Эталон"
-    )
+CREATE OR REPLACE TABLE IDM_MNGL_MAPPING."Итого Мэппинг 2011" AS (
 
     SELECT
-        "Корневой Полис ID",
+        "Номер Корневого Договора",
+        POLICY_UNIQUE_ID_036,
         "АВС" "АВС 2011 мэп",
         "ЦФО" "ЦФО 2012 мэп",
-        "КП" "КП 2011 мэп",
+        TO_CHAR("КП") "КП 2011 мэп",
+        "Код ПП",
         "Продукт OEBS",
+        "Год договора OEBS",
         "Эталон"
-    FROM IDM_MGMT_MAP.UNC_UU_MAP_ADDON
-;
+    FROM IDM_MNGL_MAPPING."UNICUS Доп Мэппинг 2011"
 
-INSERT INTO IDM_MGMT_MAP.UNC_UU_MAP_POLICY (
-    "Корневой Полис ID",
-    "АВС",
-    "ЦФО",
-    "КП",
-    "Продукт OEBS",
-    "Эталон"
-    )
+    UNION
 
     SELECT
-        "Корневой Полис ID",
+        CONTRACT_NUMBER_005,
+        POLICY_UNIQUE_ID_036,
         "АВС 2011 мэп",
         "ЦФО 2012 мэп",
         "КП 2011 мэп",
+        "Код ПП",
         "Продукт OEBS",
-        "Эталон"
-    FROM IDM_MGMT_MAP.UNC_UU_MAP_ETALON ME
-    WHERE NOT EXISTS(SELECT 1 FROM IDM_MGMT_MAP.UNC_UU_MAP_POLICY MP WHERE MP."Корневой Полис ID" = ME."Корневой Полис ID")
-;
+        "Год договора OEBS",
+        '1' "Эталон"
+    FROM STG_FILES."092_Эталон ЮНИКУС_ИТОГ"
+);
 
-INSERT INTO IDM_MGMT_MAP.UNC_UU_MAP_CONTRACT (
-    "Корневой Договор Номер",
-    "АВС",
-    "ЦФО",
-    "КП",
-    "Уникальный"
-    )
+CREATE OR REPLACE TABLE IDM_MNGL_MAPPING."UNICUS Итого Мэппинг" AS (
 
-    WITH UNIC AS (
+    WITH ADD_MAPPING AS (
+        SELECT
+                CONTRACT_NUMBER_005 "Номер Корневого Договора",
+                POLICY_UNIQUE_ID_036,
+                "АВС 2011 мэп",
+                "ЦФО 2012 мэп",
+                TO_CHAR("КП 2011 мэп"),
+                "Код ПП",
+                "Продукт OEBS",
+                "Год договора OEBS",
+                '1' "Эталон"
+        FROM IDM_MNGL_MAPPING."UNICUS Доп Мэппинг 2011"
+
+        UNION ALL
+
+        SELECT
+            CONTRACT_NUMBER_005,
+            POLICY_UNIQUE_ID_036,
+            "АВС 2011 мэп",
+            "ЦФО 2012 мэп",
+            "КП 2011 мэп",
+            "Код ПП",
+            "Продукт OEBS",
+            "Год договора OEBS",
+            NULL "Эталон"
+        FROM STG_FILES."092_Эталон ЮНИКУС_ИТОГ"
+        )
+
+    , UNIC AS (
         SELECT
             "Номер Корневого Договора",
-            COUNT(CONCAT("Номер Корневого Договора", '_', "ЦФО", '_', "КП")) "Счётчик"
-        FROM IDM_MGMT_MAP.UNC_UU_MAP_ADDON
+            COUNT(CountMe) "Счётчик"
+        FROM (
+            SELECT
+	            "Номер Корневого Договора",
+                "АВС",
+                "ЦФО",
+                "КП",
+                CONCAT("Номер Корневого Договора", '_', "ЦФО", '_', "КП") CountMe
+            FROM ADD_MAPPING
+            )
         GROUP BY "Номер Корневого Договора"
-        )
-
-    SELECT
-        AM."Номер Корневого Договора",
-        AM."АВС",
-        AM."ЦФО",
-        AM."КП",
-        CASE
-	        WHEN UNIC."Счётчик" > 1 THEN 'NU' ELSE 'U'
-	    END "Уникальный"
-    FROM IDM_MGMT_MAP.UNC_UU_MAP_ADDON AM
-    LEFT JOIN UNIC
-        ON AM."Номер Корневого Договора" = UNIC."Номер Корневого Договора"
-;
-
-INSERT INTO IDM_MGMT_MAP.UNC_UU_MAP_CONTRACT (
-    "Корневой Договор Номер",
-    "АВС",
-    "ЦФО",
-    "КП",
-    "Уникальный"
     )
 
-    WITH UNIC AS (
-        SELECT
-            "Корневой Договор Номер",
-            COUNT(CONCAT("Корневой Договор Номер", '_',"ЦФО 2012 мэп" , '_', "КП 2011 мэп")) "Счётчик"
-        FROM IDM_MGMT_MAP.UNC_UU_MAP_ETALON
-        GROUP BY "Корневой Договор Номер"
-        )
-
     SELECT
-        AM."Корневой Договор Номер",
-        AM."АВС 2011 мэп",
-        AM."ЦФО 2012 мэп",
-        AM."КП 2011 мэп",
-        CASE
-	        WHEN UNIC."Счётчик" > 1 THEN 'NU' ELSE 'U'
-	    END "Уникальный"
-    FROM IDM_MGMT_MAP.UNC_UU_MAP_ETALON AM
+        *
+    FROM ADD_MAPPING AM
     LEFT JOIN UNIC
-        ON AM."Корневой Договор Номер" = UNIC."Корневой Договор Номер"
-;
+        ON UNIC."Номер Корневого Договора" = AM."Номер Корневого Договора"
+);
+
 
 
 
