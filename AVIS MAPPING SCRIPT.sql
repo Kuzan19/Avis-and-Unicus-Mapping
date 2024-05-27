@@ -37,8 +37,8 @@ INSERT INTO IDM_MGMT_MAP.AVIS_UU_MAP_CONTRACT (
     "ЦФО",
     "КП",
     "Код ПП",
-    "Год договора OEBS",
-    "Продукт OEBS"
+    "Продукт OEBS",
+    "Год договора OEBS"
     )
 
     SELECT
@@ -49,15 +49,15 @@ INSERT INTO IDM_MGMT_MAP.AVIS_UU_MAP_CONTRACT (
         "Подразделение код",
         "Продукт OEBS",
         '2' "Год договора OEBS"
-    FROM (
-        SELECT
-            RNP.AG_OUR_NUMBER,
+    FROM (SELECT
+            RNP.AG_OUR_NUMBER "Корневой договор номер",
+			ABC."Код OEBS АВС 2011" "Код АВС",
             CFO."Код OEBS ЦФО 2011" "Код ЦФО",
-    	    ABC."Код OEBS АВС 2011" "Код АВС",
     	    KP."Код OEBS КП 2011",
+			RNP.ID_DEPARTMENT "Подразделение код",
     	    CASE
 	        	WHEN AGRN.GROUPE_NAME LIKE '%Сбербанк%' THEN 'B301007'
-	        	WHEN RNP.AG_OUR_NUMBER LIKE '%/459/%' OR TMP.AG_OUR_NUMBER LIKE '%/460/%'
+	        	WHEN RNP.AG_OUR_NUMBER LIKE '%/459/%' OR RNP.AG_OUR_NUMBER LIKE '%/460/%'
 	        	    AND RNP.AG_OUR_NUMBER NOT LIKE '%/045/459/%'
 	        	    AND RNP.AG_OUR_NUMBER NOT LIKE '%/045/460/%'
 	        	THEN 'B301001'
@@ -66,13 +66,13 @@ INSERT INTO IDM_MGMT_MAP.AVIS_UU_MAP_CONTRACT (
 	    FROM STG_AVIS.REPORT_RNP_QV_ALL RNP
 
 	    LEFT JOIN STG_FILES."017_справ_кодов_ЦФО" CFO
-    	ON TMP."Подразделение код" = TO_CHAR(CFO."код_подразделения") AND CFO."код_подразделения" IS NOT NULL
+    	ON RNP.ID_DEPARTMENT = CFO."код_подразделения" AND CFO."код_подразделения" IS NOT NULL
 
         LEFT JOIN STG_FILES."014_справ_кодов_АВС" ABC
-        	ON TMP."ТОС название" = ABC."Тос название Юникус" AND ABC."Тос название Юникус" IS NOT NULL
+        	ON 'ДМС/общий' = ABC."Тос название Юникус" AND ABC."Тос название Юникус" IS NOT NULL
 
         LEFT JOIN STG_FILES."015_справ_кодов_КП" KP
-        	ON TMP."Канал название" = KP."КП название Юникус" AND KP."КП название Юникус" IS NOT NULL
+        	ON RNP.CHANNEL_INFO = KP."КП название Юникус" AND KP."КП название Юникус" IS NOT NULL
 
         LEFT JOIN STG_AVIS.AGREEMENT AGR
             ON AGR.AG_ID = RNP.AG_ID
@@ -81,16 +81,14 @@ INSERT INTO IDM_MGMT_MAP.AVIS_UU_MAP_CONTRACT (
             ON AGRN.GROUPE_ID = AGR.GROUPE_ID
 
         WHERE (AC_CREDIT = '92/1Н' AND (IS_LOADED <> 'не начисл. в Парус' OR IS_LOADED IS NULL)) OR
-        (AC_DEBIT = '22/5Н' OR AC_DEBIT = '91/17') AND (IS_LOADED <> 'не начисл. в Парус' OR IS_LOADED IS NULL)) AMG
-    GROUP BY "Корневой договор номер"
+        (AC_DEBIT = '22/5Н' OR AC_DEBIT = '91/17') AND (IS_LOADED <> 'не начисл. в Парус' OR IS_LOADED IS NULL)
+	) AMG
     WHERE NOT EXISTS(
         SELECT
             1
         FROM IDM_MGMT_MAP.AVIS_UU_MAP_CONTRACT AM
-        WHERE AM."Корневой договор номер" = AMG."Корневой договор номер ")
-    ORDER BY AG_OUR_NUMBER
-    ORDER BY OP_DATE
-    ORDER BY ENTRY_ID
+        WHERE AM."Корневой договор номер" = AMG."Корневой договор номер")
+	ORDER BY AMG."Код АВС","Код ЦФО","Код OEBS КП 2011","Подразделение код","Продукт OEBS"
     LIMIT 1
 ;
 
