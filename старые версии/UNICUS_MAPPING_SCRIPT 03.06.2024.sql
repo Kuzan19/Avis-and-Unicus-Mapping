@@ -1,72 +1,74 @@
 --// Формируем таблицу на основе таблицы STG_FILES."092_Эталон ЮНИКУС_ИТОГ"//--
---CREATE OR REPLACE TABLE IDM_MGMT_MAP.UNC_UU_MAP_ETALON (
---    "Корневой Полис ID" DECIMAL(36,10),
---    "Корневой Договор Номер" VARCHAR(64),
---    "АВС" VARCHAR(8),
---    "ЦФО" VARCHAR(8),
---    "КП" VARCHAR(8),
---    "Продукт OEBS" CHAR(7),
---    "Год Договора OEBS" CHAR(7),
---    "Код ПП" VARCHAR(16),
---    "Эталон" CHAR(1)
---);
+CREATE OR REPLACE TABLE IDM_MGMT_MAP.UNC_UU_MAP_ETALON (
+    "Корневой Полис ID" DECIMAL(36,10),
+    "Корневой Договор Номер" VARCHAR(64),
+    "АВС" VARCHAR(8),
+    "ЦФО" VARCHAR(8),
+    "КП" VARCHAR(8),
+    "Продукт OEBS" CHAR(7),
+    "Год Договора OEBS" CHAR(7),
+    "Код ПП" VARCHAR(16),
+    "Эталон" CHAR(1)
+);
 
+/**********
+Скрипт для обновления данных в таблице ETALON
 
 --// Добавляем данные в таблицу UNC_UU_MAP_ETALON//--
 INSERT INTO IDM_MGMT_MAP.UNC_UU_MAP_ETALON
 SELECT
+    CONTRACT_NUMBER_005 "Корневой Договор Номер",
     POLICY_UNIQUE_ID_036 "Корневой Полис ID",
-	CONTRACT_NUMBER_005 "Корневой Договор Номер",
     "АВС 2011 мэп" "АВС",
     "ЦФО 2012 мэп" "ЦФО",
     "КП 2011 мэп" "КП",
+    "Код ПП",
     "Продукт OEBS",
     "Год договора OEBS",
-	"Код ПП",
     '1' "Эталон"
 FROM STG_FILES."092_Эталон ЮНИКУС_ИТОГ"
 ;
 
-
+**********/
 
 --// Формируем таблицу эквивалент "Доп Мэппинг 2011"//--
---CREATE OR REPLACE TABLE IDM_MGMT_MAP.UNC_UU_MAP_ADDON (
---    "Корневой Полис ID" DECIMAL(36,10),
---    "Корневой Договор Номер" VARCHAR(64),
---    "АВС" VARCHAR(8),
---    "ЦФО" VARCHAR(8),
---    "КП" VARCHAR(8),
---    "Продукт OEBS" CHAR(7),
---    "Год Договора OEBS" CHAR(7),
---    "Код ПП" VARCHAR(16),
---    "Эталон" CHAR(1)
---);
+CREATE OR REPLACE TABLE IDM_MGMT_MAP.UNC_UU_MAP_ADDON (
+    "Корневой Полис ID" DECIMAL(36,10),
+    "Корневой Договор Номер" VARCHAR(64),
+    "АВС" VARCHAR(8),
+    "ЦФО" VARCHAR(8),
+    "КП" VARCHAR(8),
+    "Продукт OEBS" CHAR(7),
+    "Год Договора OEBS" CHAR(7),
+    "Код ПП" VARCHAR(16),
+    "Эталон" CHAR(1)
+);
 
 --// Формируем таблицу эквивалент "Итого Мэппинг 2011" //--
---CREATE OR REPLACE TABLE IDM_MGMT_MAP.UNC_UU_MAP_POLICY (
---    "Корневой Полис ID" DECIMAL(36,10),
---    "Корневой Договор Номер" VARCHAR(64),
---    "АВС" VARCHAR(8),
---    "ЦФО" VARCHAR(8),
---    "КП" VARCHAR(8),
---    "Продукт OEBS" CHAR(7),
---    "Год Договора OEBS" CHAR(7),
---    "Код ПП" VARCHAR(16),
---    "Эталон" CHAR(1)
---);
+CREATE OR REPLACE TABLE IDM_MGMT_MAP.UNC_UU_MAP_POLICY (
+    "Корневой Полис ID" DECIMAL(36,10),
+    "Корневой Договор Номер" VARCHAR(64),
+    "АВС" VARCHAR(8),
+    "ЦФО" VARCHAR(8),
+    "КП" VARCHAR(8),
+    "Продукт OEBS" CHAR(7),
+    "Год Договора OEBS" CHAR(7),
+    "Код ПП" VARCHAR(16),
+    "Эталон" CHAR(1)
+);
 
 --// Формируем таблицу эквивалент "Итого Мэппинг" //--
---CREATE OR REPLACE TABLE IDM_MGMT_MAP.UNC_UU_MAP_CONTRACT (
---    "Корневой Полис ID" DECIMAL(36,10),
---    "Корневой Договор Номер" VARCHAR(64),
---    "АВС" VARCHAR(8),
---    "ЦФО" VARCHAR(8),
---    "КП" VARCHAR(8),
---    "Продукт OEBS" CHAR(7),
---    "Год Договора OEBS" CHAR(7),
---    "Код ПП" VARCHAR(16),
---    "Уникальный" VARCHAR(2)
---);
+CREATE OR REPLACE TABLE IDM_MGMT_MAP.UNC_UU_MAP_CONTRACT (
+    "Корневой Полис ID" DECIMAL(36,10),
+    "Корневой Договор Номер" VARCHAR(64),
+    "АВС" VARCHAR(8),
+    "ЦФО" VARCHAR(8),
+    "КП" VARCHAR(8),
+    "Продукт OEBS" CHAR(7),
+    "Год Договора OEBS" CHAR(7),
+    "Код ПП" VARCHAR(16),
+    "Уникальный" VARCHAR(2)
+);
 
 --// Добавляем данные в таблицу UNC_UU_MAP_ADDON//--
 INSERT INTO IDM_MGMT_MAP.UNC_UU_MAP_ADDON (
@@ -150,8 +152,8 @@ WHERE UPPER(PRODUCT_ADD_NAME) IN (
 )),
 
 PROD_ATTR AS (
-SELECT DISTINCT
-	POLICY_ID_100,
+SELECT
+    POLICY_ID_100,
     CASE
         WHEN PRODUCT_ADD_NAME ='БанкЛизинг' THEN PRODUCT_ADD_VALUE
     END 'Атр ПРД Банк/Лизинг',
@@ -186,6 +188,20 @@ FROM (
     			SELECT 'Маркетинговое наименование_212' OLD_NAME, 'Маркетинговое наименование продукта' NEW_NAME
     		) PANMAP ON PANMAP.OLD_NAME = PA.PRODUCT_ADD_NAME
 ))
+
+--PROD_ATTR AS (
+--SELECT DISTINCT
+--    BASE.POLICY_ID_100,
+--    AP_1.PRODUCT_ADD_VALUE "Атр ПРД Банк/Лизинг",
+--    AP_2.PRODUCT_ADD_VALUE "Атр ПРД Наименование дисконтной программы",
+--    AP_3.PRODUCT_ADD_VALUE "Атр ПРД Маркетинговое наименование продукта",
+--    AP_4.PRODUCT_ADD_VALUE "Атр ПРД Специальное условие"
+--FROM BASE
+--    LEFT JOIN PROD_UNICUS AP_1 ON AP_1.CONTRACT_VARIANT_ID = BASE.CONTRACT_VARIANT_ID AND AP_1.PRODUCT_ADD_NAME = 'БанкЛизинг'
+--    LEFT JOIN PROD_UNICUS AP_2 ON AP_2.CONTRACT_VARIANT_ID = BASE.CONTRACT_VARIANT_ID AND AP_2.PRODUCT_ADD_NAME = 'Наименование дисконтной программы'
+--    LEFT JOIN PROD_UNICUS AP_3 ON AP_3.CONTRACT_VARIANT_ID = BASE.CONTRACT_VARIANT_ID AND AP_3.PRODUCT_ADD_NAME = 'Маркетинговое наименование продукта'
+--    LEFT JOIN PROD_UNICUS AP_4 ON AP_4.CONTRACT_VARIANT_ID = BASE.CONTRACT_VARIANT_ID AND AP_4.PRODUCT_ADD_NAME = 'Специальное условие'
+--)
 
 SELECT
     LP.POLICY_UNIQUE_ID_036 "Корневой Полис ID",
@@ -681,25 +697,25 @@ FROM IDM_MGMT_MAP.UNC_UU_MAP_ETALON
 UNIC AS (
 SELECT
     "Корневой Договор Номер",
-    COUNT(CONCAT("Корневой Договор Номер", '_', "АВС", '_', "ЦФО", '_', "КП")) "Счётчик"
+    COUNT("Номер Корневого Договора", '_', "АВС", '_', "ЦФО", '_', "КП") "Счётчик"
 FROM UNITED
 GROUP BY "Корневой Договор Номер"
 )
 
 SELECT
-    UNITED."Корневой Полис ID",
-    UNITED."Корневой Договор Номер",
-    UNITED."АВС",
-    UNITED."ЦФО",
-    UNITED."КП",
-    UNITED."Продукт OEBS",
-    UNITED."Год Договора OEBS",
-    UNITED."Код ПП",
+    UN."Корневой Полис ID",
+    UN."Корневой Договор Номер",
+    UN."АВС",
+    UN."ЦФО",
+    UN."КП",
+    UN."Продукт OEBS",
+    UN."Год Договора OEBS",
+    UN."Код ПП",
     CASE
-        WHEN UNIC."Счётчик" > 1 THEN 'NU' ELSE 'U'
+        WHEN UC."Счётчик" > 1 THEN 'NU' ELSE 'U'
     END "Уникальный"
-FROM UNITED
-    JOIN UNIC ON UNIC."Корневой Договор Номер" = UNITED."Корневой Договор Номер"
+FROM UNITED UN
+    JOIN UNIC UC ON UC."Корневой Договор Номер" = UN."Корневой Договор Номер"
 ;
 
 
